@@ -1,12 +1,18 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
-
+const mongoose = require('mongoose')
 const app = express()
 app.use(express.json());
 const cors = require('cors')
-
 app.use(cors())
 app.use(express.static('build'))
+
+const Person = require('./models/person');
+const { ObjectId } = require('mongodb');
+//const Person = mongoose.model('Person', personSchema)
+//const Person = require('./mongo')
+//const Person = mongoose.model('Person', personSchema)
 
 morgan.token('body', (req) => JSON.stringify(req.body));
 app.use(morgan(function (tokens, req, res) {
@@ -20,6 +26,7 @@ app.use(morgan(function (tokens, req, res) {
 	].join(' ')
   }))
 
+/*
 let persons = [
 	{
 		id: 1,
@@ -41,36 +48,64 @@ let persons = [
 		name: "Pepe Wilberg",
 		Number: "0400-1112221"
 	}
-]
+]*/
+
+//app.get('/api/persons/', (request, response) => {
+//	response.send(persons);
+//});
+
 
 app.get('/api/persons/', (request, response) => {
-	response.send(persons);
+	console.log(Person)
+	Person.find({}).then(persons => {
+		response.json(persons)
+	})
 });
+
 app.get('/info', (request, response) => {
-	const time = new Date();
-	const personCount = persons.length;
-	response.send(`
-  	<div>
-			<p>Phonebook has info for ${personCount} people</p>
-    		<p>${time}</p>
-  	</div>`);
+	Person.countDocuments({})
+		.then(personCount => {
+			const time = new Date();
+			response.send(`
+				<div>
+						<p>Phonebook has info for ${personCount} people</p>
+						<p>${time}</p>
+				</div>`);	
+		})
+		.catch(error => {
+			console.log("error");
+			response.send('Error in counting the documents')
+		})
 });
 
 app.get('/api/persons/:id', (request, response) => {
-const id = Number(request.params.id)
-const person = persons.find(note => note.id === id)
-if (person) {
-	response.json(person)
-} else {
-	response.status(404).end()
-}
+	const id = Number(request.params.id)
+	
+	Person.findOne({id: id})
+		.then(person => {
+			if (person) {
+				response.json(person)
+			} else {
+			response.status(404).end();
+			}
+		})
+		.catch(error => {
+			console.log("error");
+			response.status(500).send(`Error in finding id`)
+		})
 });
 
 app.delete('/api/persons/:id', (request, response) => {
 	const id = Number(request.params.id)
-	persons = persons.filter(person => person.id !== id)
 
-	response.status(204).end()
+	Person.findOneAndDelete({id: id})
+		.then (() => {
+			response.status(204).end();
+		})
+		.catch(error => {
+			console.log(error);
+			response.status(500).send(`Error in finding id (delete)`)
+		})
 })
 
 app.post('/api/persons', (request, response) => {
@@ -85,23 +120,37 @@ app.post('/api/persons', (request, response) => {
 			error: 'number missing'
 		})
 	}
-	const personExists = persons.find(person => person.name === body.name)
-	if (personExists) {
-		return response.status(400).json({
-			error: 'name must be unique'
-	})
-	}
-	randomId = Math.floor(Math.random() * 1000001)
-	const person = {
-		id: randomId, 
-		name: body.name,
-		number: body.number,
-	}
-	persons = persons.concat(person)
-	response.json(person)
+
+	Person.findOne({name: body.name})
+		.then(personExists => {
+			if (personExists) {
+				return response.status(400).json({
+					error: 'name must be unique'
+				})
+			}
+			//randomId = Math.floor(Math.random() * 1000001)
+			const person = new Person({
+				//_id: new mongoose.Types.ObjectId(),
+				id: Math.floor(Math.random() * 1000001),
+				name: body.name,
+				number: body.number
+			});
+			person.save()
+				.then(savedPerson => {
+					response.json(savedPerson);
+				})
+				.catch(error => {
+					console.error(error);
+					response.status(500).send('Error adding new person')
+				})
+		})
+		.catch(error => {
+			console.error(error);
+			response.status(500).send('Error total person error')
+		})
 })
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })

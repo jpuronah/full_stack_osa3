@@ -56,10 +56,15 @@ let persons = [
 
 
 app.get('/api/persons/', (request, response) => {
-	console.log(Person)
-	Person.find({}).then(persons => {
-		response.json(persons)
-	})
+	//console.log(Person)
+	Person.find({})
+		.then(persons => {
+			response.json(persons)
+		})
+		.catch(error => {
+			console.log(error);
+			response.status(400).send('Error finding persons')
+		})
 });
 
 app.get('/info', (request, response) => {
@@ -73,7 +78,7 @@ app.get('/info', (request, response) => {
 				</div>`);	
 		})
 		.catch(error => {
-			console.log("error");
+			console.log(error);
 			response.send('Error in counting the documents')
 		})
 });
@@ -90,8 +95,8 @@ app.get('/api/persons/:id', (request, response) => {
 			}
 		})
 		.catch(error => {
-			console.log("error");
-			response.status(500).send(`Error in finding id`)
+			console.log(error);
+			response.status(400).send({ error: 'malformatted id' })
 		})
 });
 
@@ -140,12 +145,12 @@ app.post('/api/persons', (request, response) => {
 					response.json(savedPerson);
 				})
 				.catch(error => {
-					console.error(error);
+					console.log(error);
 					response.status(500).send('Error adding new person')
 				})
 		})
 		.catch(error => {
-			console.error(error);
+			console.log(error);
 			response.status(500).send('Error total person error')
 		})
 })

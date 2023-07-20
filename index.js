@@ -26,48 +26,16 @@ app.use(morgan(function (tokens, req, res) {
 	].join(' ')
   }))
 
-/*
-let persons = [
-	{
-		id: 1,
-		name: "Arto Hellas",
-		Number: "040-123-1234"
-	},
-	{
-		id: 2,
-		name: "Jarkko Kreikka",
-		Number: "050-987-9876"
-	},	
-	{
-		id: 3,
-		name: "Hannes Ahorn",
-		Number: "09-883-4321"
-	},
-	{
-		id: 4,
-		name: "Pepe Wilberg",
-		Number: "0400-1112221"
-	}
-]*/
-
-//app.get('/api/persons/', (request, response) => {
-//	response.send(persons);
-//});
-
-
-app.get('/api/persons/', (request, response) => {
+app.get('/api/persons/', (request, response, next) => {
 	//console.log(Person)
 	Person.find({})
 		.then(persons => {
 			response.json(persons)
 		})
-		.catch(error => {
-			console.log(error);
-			response.status(400).send('Error finding persons')
-		})
+		.catch(error => next(new Error('Error finding persons')))
 });
 
-app.get('/info', (request, response) => {
+app.get('/info', (request, response, next) => {
 	Person.countDocuments({})
 		.then(personCount => {
 			const time = new Date();
@@ -77,16 +45,13 @@ app.get('/info', (request, response) => {
 						<p>${time}</p>
 				</div>`);	
 		})
-		.catch(error => {
-			console.log(error);
-			response.send('Error in counting the documents')
-		})
+		.catch(error => next(new Error('Error in counting the documents')))
 });
 
-app.get('/api/persons/:id', (request, response) => {
-	const id = Number(request.params.id)
-	
-	Person.findOne({id: id})
+app.get('/api/persons/:id', (request, response, next) => {
+	//const id = Number(request.params.id)
+	const id = request.params.id
+	Person.findById(id)
 		.then(person => {
 			if (person) {
 				response.json(person)
@@ -94,49 +59,32 @@ app.get('/api/persons/:id', (request, response) => {
 			response.status(404).end();
 			}
 		})
-		.catch(error => {
-			console.log(error);
-			response.status(400).send({ error: 'malformatted id' })
-		})
+		.catch(error => next(new Error('malformatted id')))
 });
 
-app.delete('/api/persons/:id', (request, response) => {
-	const id = Number(request.params.id)
+app.delete('/api/persons/:id', (request, response, next) => {
+	const id = request.params.id
 
-	Person.findOneAndDelete({id: id})
+	//Person.findOneAndDelete({id: id})
+	Person.findByIdAndRemove(id)
 		.then (() => {
 			response.status(204).end();
 		})
-		.catch(error => {
-			console.log(error);
-			response.status(500).send(`Error in finding id (delete)`)
-		})
+		.catch(error => next(new Error('malformatted id (delete)')))
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
 	const body = request.body
-	if (!body.name) {
-		return response.status(400).json({
-			error: 'name missing'
-		})
-	}
-	if (!body.number) {
-		return response.status(400).json({
-			error: 'number missing'
-		})
+	if (!body.name || !body.number) {
+		return next(new Error('Name or number missing'))
 	}
 
 	Person.findOne({name: body.name})
 		.then(personExists => {
 			if (personExists) {
-				return response.status(400).json({
-					error: 'name must be unique'
-				})
+				return next(new Error('name must be unique'))
 			}
-			//randomId = Math.floor(Math.random() * 1000001)
 			const person = new Person({
-				//_id: new mongoose.Types.ObjectId(),
-				id: Math.floor(Math.random() * 1000001),
 				name: body.name,
 				number: body.number
 			});
@@ -144,16 +92,22 @@ app.post('/api/persons', (request, response) => {
 				.then(savedPerson => {
 					response.json(savedPerson);
 				})
-				.catch(error => {
-					console.log(error);
-					response.status(500).send('Error adding new person')
-				})
+				.catch(error => next(new Error('Error adding new person')))
 		})
-		.catch(error => {
-			console.log(error);
-			response.status(500).send('Error total person error')
-		})
+		.catch(error => next(new Error('error in person exist? (creating new)')))
 })
+
+const errorHandler = (error, request, response, next) => {
+	let message = error.message
+
+	if (message) {
+		console.log("Error: ", message)
+		return response.status(400).json({message})
+	}
+	next(error)
+}
+
+app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {

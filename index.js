@@ -65,7 +65,6 @@ app.get('/api/persons/:id', (request, response, next) => {
 app.delete('/api/persons/:id', (request, response, next) => {
 	const id = request.params.id
 
-	//Person.findOneAndDelete({id: id})
 	Person.findByIdAndRemove(id)
 		.then (() => {
 			response.status(204).end();
@@ -95,6 +94,21 @@ app.post('/api/persons', (request, response, next) => {
 				.catch(error => next(new Error('Error adding new person')))
 		})
 		.catch(error => next(new Error('error in person exist? (creating new)')))
+})
+
+app.put('/api/persons/:id', (request, response, next) => {
+	const id = request.params.id
+	const updatedPerson = request.body
+	Person.findByIdAndUpdate(id, updatedPerson, {new: true})
+		.then(updatedPerson => {
+			if (updatedPerson) {
+				response.json(updatedPerson)
+			}
+			else {
+				response.status(404).end()
+			}
+		})
+		.catch(error => next(new Error('error updating person')))
 })
 
 const errorHandler = (error, request, response, next) => {

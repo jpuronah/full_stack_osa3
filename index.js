@@ -74,10 +74,9 @@ app.delete('/api/persons/:id', (request, response, next) => {
 
 app.post('/api/persons', (request, response, next) => {
 	const body = request.body
-	if (!body.name || !body.number) {
+	/*if (!body.name || !body.number) {
 		return next(new Error('Name or number missing'))
-	}
-
+	}*/
 	Person.findOne({name: body.name})
 		.then(personExists => {
 			if (personExists) {
@@ -91,7 +90,8 @@ app.post('/api/persons', (request, response, next) => {
 				.then(savedPerson => {
 					response.json(savedPerson);
 				})
-				.catch(error => next(new Error('Error adding new person')))
+				.catch(error => next(error))
+				//.catch(error => next(new Error('Error adding new person')))
 		})
 		.catch(error => next(new Error('error in person exist? (creating new)')))
 })
@@ -113,9 +113,19 @@ app.put('/api/persons/:id', (request, response, next) => {
 
 const errorHandler = (error, request, response, next) => {
 	let message = error.message
-
+	//console.log("ERROR HANDLER")
+	//console.log(error.message)
+	if (error.name === 'CastError') {
+		//console.log("cast")
+		return response.status(400).send({ error: 'malformatted id' })
+	
+	  } else if (error.name === 'ValidationError') {
+		//console.log("VALIDATIONERROR", error.message)
+		return response.status(400).json({ error: message })
+	  }
 	if (message) {
-		console.log("Error: ", message)
+		//console.log("psapaap")
+		//console.log("Error: ", message)
 		return response.status(400).json({message})
 	}
 	next(error)
